@@ -1,13 +1,18 @@
 class MenusController < ApplicationController
   def index
     @menus = Menu.all
-    render json: @menus, include: [:category], status: :ok
+    puts @menus
+    if @menus.blank?
+      render json: {"error" => "data not found"}, status: :not_found
+    else
+      render json: @menus, include: [:category], status: :ok
+    end
   end
 
   def create
     json_params = JSON.parse(request.body.read()).with_indifferent_access
     @menu = Menu.add_menu(json_params[:name], json_params[:description], json_params[:price], json_params[:category])
-    if @menu.created_at.nil?
+    if @menu.nil?|| @menu.created_at.nil?
       render json: {
         "error" => "cant created",
       }, status: :bad_request
@@ -18,21 +23,32 @@ class MenusController < ApplicationController
 
   def destroy
     @menu = Menu.where(id: params[:id]).first
-    if @menu.destroy
-      head(:ok)
+    if @menu.blank?
+      head(:not_found)
     else
-      head(:unprocessable_entity)
+      if @menu.destroy
+        head(:ok)
+      else
+        head(:unprocessable_entity)
+      end
     end
+
   end
 
   def update
-    json_params = JSON.parse(request.body.read()).with_indifferent_access
-    @menu = Menu.find(params[:id])
+    if !request.body.read().blank?
+      json_params = JSON.parse(request.body.read()).with_indifferent_access
+      @menu = Menu.find(params[:id])
 
-    if @menu.update(:name => json_params[:name], :description => json_params[:description], :price => json_params[:price])
-      render json: @menu, status: :created
+      if @menu.update(:name => json_params[:name], :description => json_params[:description], :price => json_params[:price])
+        render json: @menu, status: :created
+      else
+        render status: :unprocessable_entity
+      end
     else
       render status: :unprocessable_entity
     end
+
+
   end
 end
